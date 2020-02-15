@@ -74,7 +74,7 @@ if __name__=='__main__':
 					}
 
 	# jednak do google mozna zalogowac sie bez oauth! app key only 	- option suspended ...			
-	hidden_par=["send_internal_id","refresh_token","address_book","consumer_key","consumer_secret"]
+	hidden_par=["send_internal_id","address_book"] #,"refresh_token","consumer_key","consumer_secret"]
 
 	json_conf_example=json.dumps(confd_example)
 	json_conf=json_conf_example
@@ -168,11 +168,12 @@ if __name__=='__main__':
 		print('\nCurrent credentials: ') #, json_conf
 		
 		for ccr,vvr in json_conf.items():
-			if 'password' not in ccr:
-				print(ccr+': '+str(vvr))
-			elif ccr=="address_book":
+			
+			if ccr=="address_book":
 				# print(ccr+': '+str(vvr))
 				continue # dont print address book ... 
+			elif 'password' not in ccr:
+				print(ccr+': '+str(vvr))
 			else:
 				if len(vvr)<2:
 					vvr='**'
