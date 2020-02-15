@@ -1,0 +1,50 @@
+Basic usage commands
+
+By default app sends encrypted messages and decrypts all in attachments, but if someone else sends you message in the email body you can also decrypt it.
+
+To work first yuo need to configure addressbook - add at least 1 email address from which you will get correspondence
+This may be your owne address too if you just want to test it:
+> saveaddr some@addr.org
+> editaddrbook
+
+To see messages and decrypt attachment:
+> top7
+> id 4333
+> decratt
+
+To send:
+> send # will open sending ui
+
+Commands are available if you mailbox is configured correctly
+
+help - displays all commands
+top7 - show newest 7 messages
+top7new - show newest unread messages
+search - advanced messsage search
+id - to read message you need t oselect id, for example type "id 121" to load message id 121 from your mailbox
+dispmsg - display email body from selected id
+decrmsg - decrypt email body
+getatt - download all attachments or selected one
+dispatt - display all attachments or selected one
+dispattlist -display attachment list
+decratt - decrypt all attachments or selected one
+clearmyfiles - clear local folder my_files, used for sending and getting non-txt files
+cleararchive - no arguments neededclears local archive
+send - send txt message
+saveaddr - add new addr to addr book
+editaddrbook - edit address book
+printaddrbook - display address book
+key_generate - gpg command if you have no keys to generate one
+key_import - import pub or secret key
+key_export - export pub key
+key_export_secret - export secret key
+key_delete - delete pub keys
+key_delete_secret - this may not work in pure terminal ui
+key_list - list pub keys
+key_list_secret - list priv keys
+listmyfiles - list files in my_files folder
+sendfile - send encrypted file
+send_public - send unencrypted txt message
+reply - if selected id will chose receivers automatically
+replyfile - reply with file version
+reply_public - reply public version
