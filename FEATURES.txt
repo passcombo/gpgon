@@ -1,0 +1,9 @@
+1. Send encrypted txt message
+2. Send encrypted files
+3. Read encrypted messages
+4. Dealing with multiple receivers
+5. Using AES 256 (symmetric password) or PGP
+6. All local credentials are also encrypted
+7. Searching mailbox
+8. Manage address book
+9. Manage keys and passwords for encryption
