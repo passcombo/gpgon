@@ -20,7 +20,7 @@
 # Just need to configure 2FA and app password in google account setup
 
 # Run app:
-# "cd gpgon-2nd"
+# "cd gpgon-3rd"
 # "python gpgon.py"
 
 # Optional:
