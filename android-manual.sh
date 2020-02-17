@@ -10,17 +10,17 @@
 #    - "pip install psutil" # [must have] for app additional library
 
 # Download app [here example second version]:
-# "wget https://github.com/passcombo/gpgon/archive/3rd.tar.gz"
+# "wget https://github.com/passcombo/gpgon/archive/4.tar.gz"
 
 # Extract:
-# "tar xfvz 3rd.tar.gz"
+# "tar xfvz 4.tar.gz"
 
 # See intro.pdf for mailbox config
 # Every Android user shuld have gmail box that works with the app
 # Just need to configure 2FA and app password in google account setup
 
 # Run app:
-# "cd gpgon-3rd"
+# "cd gpgon-4"
 # "python gpgon.py"
 
 # Optional:
