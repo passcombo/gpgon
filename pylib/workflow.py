@@ -478,7 +478,9 @@ def download_att(json_obj,msg_id,pp,att_name,print_content=False): # OK
 				att_downloaded_list=mbox.download_msg_id_att(mail_from , mail_from_pswd , imap_addr, msg_id)
 				if print_content:
 					for ijk in att_downloaded_list:
-						if '.txt' in ijk.lower():
+						asdf=ijk.lower().split('.')
+						# print(asdf,len(asdf),asdf[-1])
+						if asdf[-1]=='txt' :
 							print('File content:\n',iop.readfile(ijk))
 				
 			else:
@@ -495,7 +497,10 @@ def download_att(json_obj,msg_id,pp,att_name,print_content=False): # OK
 						
 						iter+=1
 						
-						if print_content and '.txt' in tmppath.lower():
+						asdf=tmppath.lower().split('.')
+						# print(asdf,len(asdf),asdf[-1])
+						
+						if print_content and 'txt' ==asdf[-1]:
 							print('File content:\n',iop.readfile(tmppath))
 	
 	return iter # number of attachments downloaded to archive - total
