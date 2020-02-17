@@ -130,7 +130,7 @@ import os
 	# mail.logout()
 
 
-def prepare_message_email(sender_name, file_attach=[] , subj='', text_part=''):
+def prepare_message_email(sender_name, file_attach=[] , subj='', text_part='',receiver_email_to=''):
 	
 	def_subject='Lorem ipsum ut gravida'
 	if subj=='':
@@ -144,6 +144,7 @@ def prepare_message_email(sender_name, file_attach=[] , subj='', text_part=''):
 	message.set_charset('utf8')
 	message["Subject"] = subj
 	message["From"] = sender_name
+	message["To"] = receiver_email_to
 	
 	msgText = MIMEText(text_part, 'plain')
 	message.attach(msgText)			
@@ -196,7 +197,7 @@ def send_email(smtp_addr,sender_email, password, sender_name, receiver_email, fi
 	except:
 		print()
 	
-	message=prepare_message_email(sender_name, file_attach , subj, text_part)
+	message=prepare_message_email(sender_name, file_attach , subj, text_part, receiver_email_to=','.join(receiver_email))
 	
 	if type(message)==type('asdf'):
 		return message
@@ -385,7 +386,11 @@ def read_msg_id(mail_from , mail_from_pswd , imap_addr, id)	:
 				
 			printstr+='Date: '+tmpdate+' From: '+msg["From"]+' Subject: '+msg["Subject"]+'\n'
 			sender_email=iop.xtract_email(msg["From"])
-			mail_to=msg["To"].split(',')
+			# print(msg)
+			# print(msg["To"])
+			mail_to=''
+			if msg["To"]!=None:
+				mail_to=msg["To"].split(',')
 			# print(msg["From"],iop.xtract_email(msg["From"]))
 			# exit()
 			
