@@ -197,7 +197,13 @@ def send_email(smtp_addr,sender_email, password, sender_name, receiver_email, fi
 	except:
 		print()
 	
-	message=prepare_message_email(sender_name, file_attach , subj, text_part, receiver_email_to=','.join(receiver_email))
+	# print('a',receiver_email,type(receiver_email))
+	# print('b',','.join(receiver_email))
+	receiver_email_to=receiver_email # if string
+	if type(receiver_email)==type([1,2]):
+		receiver_email_to=','.join(receiver_email)
+	
+	message=prepare_message_email(sender_name, file_attach , subj, text_part, receiver_email_to )
 	
 	if type(message)==type('asdf'):
 		return message
@@ -426,7 +432,7 @@ def read_msg_id(mail_from , mail_from_pswd , imap_addr, id)	:
 	mail.logout()
 	
 	for ij,mm in enumerate(mail_to):
-		mail_to[ij]=iop.xtract_email(mm)
+		mail_to[ij]=iop.xtract_email(mm).lower()
 		
 	# raw_msg={"from":"ktostam", "subj":"jakis", "body":body, "attachments":[attname]}
 	return {"from":sender_email, "subj":subj, "body":msgraw, "attachments":files_att, "body_html":msghtml, "to":mail_to}
