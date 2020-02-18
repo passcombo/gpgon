@@ -1,12 +1,4 @@
-# TODO:
-# [ok] simplify commands _
-# [ok] check decr pgp is ok ?
-# [ok] add send many
-# [ok] add send public
-# [ok] new commands search top5 top5new
-# [TEST->] add reply
-# test send many secret 
-# [ok]zip in place of .pgp ?
+
 
 import re
 import os
@@ -84,7 +76,11 @@ def reread_cred(pp,newest_file):
 def send_input(json_obj , newest_file, pp, send_file=False, send_public=False, msg_receiver_s='',subj=''):
 
 	# get aliases:
-	addr_alia=iop.print_addr_book(json_obj)
+	only_return_book=False
+	if msg_receiver_s!='' or subj!='':
+		only_return_book=True
+		
+	addr_alia=iop.print_addr_book(json_obj,only_return_book)
 
 	# 1. prompt for subject / or default
 	# subj='' #iop.input_prompt(propmtstr='\n Enter message subject: ', confirm=True, soft_quite=True)
@@ -386,7 +382,8 @@ def cmd_loop(pp, newest_file):	#json_obj,
 						elif cmd_arr[0]=='sendfile':
 							potlist=send_input(json_obj , newest_file, pp, True)							
 						elif cmd_arr[0]=='send_public':
-							potlist=send_input(json_obj , newest_file, pp, False, True)				
+							potlist=send_input(json_obj , newest_file, pp, False, True)		
+							
 						elif cmd_arr[0]=='reply':
 							msg_obj=wrk.get_msg(json_obj,selected_id,pp) # need to correct to: remove my addr, if none - put from addr
 							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
@@ -405,43 +402,29 @@ def cmd_loop(pp, newest_file):	#json_obj,
 							
 							
 						
+						if potlist[0]!='':
 						
-						
-						for pt in potlist:
-							
-							msg_receiver=pt[2]
-							file_att=pt[0]
-							subj=pt[1]
-							text_part=pt[3]
-							# json_obj=reread_cred(pp,newest_file)
-							if msg_receiver=='':
-								continue
+							for pt in potlist:
 								
-							elif cmd_arr[0]!='send_public' and file_att=='':
-								print("Some error sending file - could not encrypt file ... ? ")
+								msg_receiver=pt[2]
+								file_att=pt[0]
+								subj=pt[1]
+								text_part=pt[3]
+								# json_obj=reread_cred(pp,newest_file)
+								if msg_receiver=='':
+									continue
+									
+								elif cmd_arr[0]!='send_public' and file_att=='':
+									print("Some error sending file - could not encrypt file ... ? ")
+									
+								else:
 								
-							else:
-							
-								mail_from=json_obj["email_addr"]	
-								mail_from_pswd=json_obj["email_password"]
-								
-								# smpt_cred_dict={'smtp_addr':json_obj["smtp_addr"], 
-												# 'sender_email':json_obj["email_addr"], 
-												# 'sender_name':json_obj["email_addr"],
-												# 'password':json_obj["email_password"], 
-												# 'consumer_key':json_obj["consumer_key"], 
-												# 'consumer_secret':json_obj["consumer_secret"], 
-												# 'refresh_token':json_obj["refresh_token"] }
-								
-								# ref_token=mbox.send_email(smpt_cred_dict, msg_receiver, [file_att] , subj , text_part )
-								
-								# if ref_token not in ['','q']:
-									# json_obj["refresh_token"]=ref_token
-									# iop.saving_encr_cred( json.dumps(json_obj), newest_file, pp)
-									# json_obj=reread_cred(pp,newest_file)
-								
-								retv=mbox.send_email(json_obj["smtp_addr"],mail_from, mail_from_pswd, mail_from, msg_receiver, [file_att] , subj, text_part)
-								print(retv)
+									mail_from=json_obj["email_addr"]	
+									mail_from_pswd=json_obj["email_password"]
+									
+									
+									retv=mbox.send_email(json_obj["smtp_addr"],mail_from, mail_from_pswd, mail_from, msg_receiver, [file_att] , subj, text_part)
+									print(retv)
 							
 						# exit()
 					elif cmd_arr[0] in ['reply','replyfile','reply_public']:
