@@ -236,10 +236,12 @@ def clear_archive(myfiles=''):
 	
 
 		
-def print_addr_book(json_conf):
+def print_addr_book(json_conf,only_return=False):
 	
-	print('\n=============== Address book ===============')
-	print('[ALIAS] : [FULL EMAIL ADDRESS] : [ENCRYPTION TYPE] : [ENCRYPTION KEY] : [DECRYPTION KEY]\n')
+	if not only_return:
+		print('\n=============== Address book ===============')
+		print('[ALIAS] : [FULL EMAIL ADDRESS] : [ENCRYPTION TYPE] : [ENCRYPTION KEY] : [DECRYPTION KEY]\n')
+	
 	if len(json_conf["address_book"].keys())==0:
 		print('\n ... book is empty ... \n')
 		return {}
@@ -266,7 +268,8 @@ def print_addr_book(json_conf):
 		# if tmp_encr in ['password','pgp']:
 			# tmp_active='Yes'
 		
-		print("["+tmp_alias+"] : ["+tmp_addr+"] : ["+tmp_encr+"] : ["+encr_key+"] : ["+tmp_decr+"]")
+		if not only_return:
+			print("["+tmp_alias+"] : ["+tmp_addr+"] : ["+tmp_encr+"] : ["+encr_key+"] : ["+tmp_decr+"]")
 		
 	return addr_alia
 		
