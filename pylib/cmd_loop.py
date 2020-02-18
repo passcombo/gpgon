@@ -213,6 +213,23 @@ def send_input(json_obj , newest_file, pp, send_file=False, send_public=False, m
 	return ret_list
 
 	
+	
+	
+	
+
+def get_new_to_addr_list(my_addr,msgobj):
+	cur_to=msgobj['to']
+	cur_from=msgobj['from']
+	try:
+		cur_to.remove(my_addr)
+	except:
+		print()
+		
+	
+	cur_to.append(cur_from)
+	
+	return cur_to
+	
 
 
 def cmd_loop(pp, newest_file):	#json_obj, 
@@ -364,20 +381,27 @@ def cmd_loop(pp, newest_file):	#json_obj,
 						file_att, subj, msg_receiver, text_part='','','',''
 						potlist=[]
 						if cmd_arr[0]=='send':
+							# print(msg_obj)
 							potlist=send_input(json_obj , newest_file, pp)
 						elif cmd_arr[0]=='sendfile':
 							potlist=send_input(json_obj , newest_file, pp, True)							
 						elif cmd_arr[0]=='send_public':
 							potlist=send_input(json_obj , newest_file, pp, False, True)				
 						elif cmd_arr[0]=='reply':
-							msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-							potlist=send_input(json_obj , newest_file, pp, False, False, msg_receiver_s=','.join(msg_obj["to"]),subj='RE: '+msg_obj['subj'])		
+							msg_obj=wrk.get_msg(json_obj,selected_id,pp) # need to correct to: remove my addr, if none - put from addr
+							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+							
+							potlist=send_input(json_obj , newest_file, pp, False, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])		
 						elif cmd_arr[0]=='replyfile':
 							msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-							potlist=send_input(json_obj , newest_file, pp, True, False, msg_receiver_s=','.join(msg_obj["to"]),subj='RE: '+msg_obj['subj'])			
+							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+							
+							potlist=send_input(json_obj , newest_file, pp, True, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])			
 						elif cmd_arr[0]=='reply_public':
 							msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-							potlist=send_input(json_obj , newest_file, pp, False, True, msg_receiver_s=','.join(msg_obj["to"]),subj='RE: '+msg_obj['subj'])
+							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+							
+							potlist=send_input(json_obj , newest_file, pp, False, True, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])
 							
 							
 						
