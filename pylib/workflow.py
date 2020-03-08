@@ -93,29 +93,9 @@ def decrypt_msg(json_obj,msg_id, pp, gpgpass, aes256pp): # decr body content ...
 		except:
 			print()
 			
-	# print(msg_obj)
-	# 1. check is alread decrypted:
-	# decr_body='' 
 	
-	iop.decr_msg2(msg_id,pp,  msg_obj["body"],gpgpass,aes256pp,True)
-	# dm=iop.decr_msg( [ msg_obj["body"] ],gpgpass,aes256pp)
-	# print(';;;',dm)
-	# if dm!='':
-		# decr_body="\n\n> Subject: "+msg_obj["subj"]+"\n> From: "+msg_obj["from"]+'\n\n'+dm
-		
-		# decr_body+='\n\n> Attachments: '
-		# for ij in msg_obj["attachments"]:
-			# decr_body+='\n * '+ij
-			
-		# save_file_to_archive(msg_id,'decr_body.txt',decr_body,pp)
-		
-		# print('\n\n\n'+decr_body+'\n\n\n')
-		
-	# else:
-		# print('Loaded from archive...\n'+decr_body)
+	return iop.decr_msg2(msg_id,pp,  msg_obj["body"],gpgpass,aes256pp,True)
 	
-	# return decr_body
-		
 	
 	
 
@@ -141,9 +121,9 @@ def print_msg(json_obj,gpgpass, aes256pp, msg_id,pp,decrypted=False): #ok
 	
 # simply printing raw message	
 def msg_obj_to_txt(mobj,short=True):#[OK]
-	print("> Subject: "+mobj["subj"])
-	print("> From: "+mobj["from"])
-	print("> To: "+str(mobj["to"]))
+	iop.printclr("> Subject: "+mobj["subj"],'grey')
+	iop.printclr("> From: "+mobj["from"],'grey')
+	iop.printclr("> To: "+str(mobj["to"]),'grey')
 	
 	if short:
 		# print('limit 10 lines and 1000 chars, att names, subj, from, id')
@@ -154,14 +134,14 @@ def msg_obj_to_txt(mobj,short=True):#[OK]
 			if len(tmp)>999:
 				break
 			msg_short=tmp+'\n'
-		print(msg_short)	
+		iop.printclr(msg_short,'grey')	
 	# raw_msg={"from":"ktostam", "subj":"jakis", "body":body, "attachments":[attname]}
 	else:
-		print(mobj["body"])	
+		iop.printclr(mobj["body"],'grey')	
 	
-	print('\n> Attachments: ')
+	iop.printclr('\n> Attachments: ','grey')
 	for ij in mobj["attachments"]:
-		print(' * '+ij)
+		iop.printclr(' * '+ij,'grey')
 	print(' ')
 	
 	
@@ -313,11 +293,6 @@ def display_att(json_obj,gpgpass,aes256pp,msg_id,pp,att_name,decrypted=False): #
 		# spr jesli all czy juz wszystkie sa ok ?
 		if att_name=='all':
 			
-			# change here : get att list and try display one by one ... 
-			# att_list=[]
-			# if len(msg_obj["attachments"])>0:
-				# for fn in msg_obj["attachments"]:
-					# att_list.append(fn)
 			
 			for fa in msg_obj["attachments"]:
 				# print('fa',fa)
@@ -442,18 +417,6 @@ def load_decr_att(msg_id,pp,att_name):#OK
 	
 	return disp_file(tmppath,pp)
 	
-	# gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "
-	# js_str=subprocess.getoutput(gpgstr+pp+" -d "+tmppath)
-
-	# decr_str=js_str.split(iop.lorem_ipsum()) #re.sub( "^.*" + lorem_ipsum.replace('.','\.') , "", str_rep)
-
-	# if len(decr_str)<2:
-		# print("Your password didn't match the file ... Try another password.")
-		# return {"err":"could not load file "+tmppath}
-		
-	# decr_str=decr_str[1]	
-	
-	# return decr_str
 		
 
 		
