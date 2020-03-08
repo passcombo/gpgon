@@ -14,28 +14,44 @@ import pylib.workflow as wrk
 import pylib.mailbox as mbox
 
 #select_msg_id ,'send_public','reply'
-mailing_cmds=['help','search','id','dispmsg','decrmsg','getatt','dispatt','dispattlist','decratt','clearmyfiles','cleararchive','send','saveaddr','editaddrbook','printaddrbook','key_generate','key_import','key_export','key_export_secret','key_delete','key_delete_secret','key_list','key_list_secret','listmyfiles','sendfile','send_public','reply','replyfile','reply_public','top7','top7new']
+mailing_cmds=['help','search','id','idde','dispmsg','decrmsg','getatt','dispatt','dispattlist','decratt','clearmyfiles','cleararchive','send','saveaddr','editaddrbook','printaddrbook','key_generate','key_import','key_export','key_export_secret','key_delete','key_delete_secret','key_list','key_list_secret','listmyfiles','sendfile','send_public','reply','replyfile','reply_public','top7','top7new','editappsettings']
 # ["gen-key","import","export","export-secret","delete-pub-key","delete-priv-key"]
 # those require id selected:
-mailing_cmds_req_id=['dispmsg','decrmsg','dispatt','getatt','dispattlist','decratt','reply','saveaddr']
+mailing_cmds_req_id=['dispmsg','decrmsg','dispatt','getatt','dispattlist','decratt','reply','saveaddr','reply_public','replyfile']
 
-mailing_cmd_options={'id':'111', 'disp_msg':['decr'], 'disp_att':[['decr'],['all','fname_str']] }
+mailing_cmd_options={'idde':'111','id':'111', 'disp_msg':['decr'], 'disp_att':[['decr'],['all','fname_str']] }
 
+cmd_explained={'help':'display these commands with explanation',
+				'search':'enter searching message menu. For regular use to check only recent mails top7 or top7new commands are better',
+				'id':"select message id to load e.g. 'id 37'",
+				'idde':"select message id and decrypt messagee.g. 'idde 37'",
+				'clearmyfiles':'clear "my_files" directory',
+				'send':'opens send menu',
+				'saveaddr':'add address to address book. May be used with argument "saveaddr some@email.net" ',
+				'listmyfiles':'display files in my_files directory',
+				'reply':'works like send with predefined receiver and subject. ID must be selected before',
+				'send_public':'sends message without encryption',
+				'sendfile':'allows to send file from myfiles directory',
+				'top7':'show last 7 messages',
+				'top7new':'display top7 unread messages'
+
+}
 # tmpcmd=''
 
 def print_commands():
-	print('\n\n Available commands:\n')
+	iop.printclr('\n\nAvailable commands:\n','yellow')
 	for cc in mailing_cmds:
 		tmp=''
-		if cc in mailing_cmd_options:
-			tmp=str(mailing_cmd_options[cc])
-			print(cc+' - with options and/or arguments '+tmp)
+		if cc in cmd_explained: #mailing_cmd_options:
+			tmp=str(cmd_explained[cc])
+			iop.printclr(cc+' - '+tmp,'green')
 		else:
-			print(cc+' - no arguments needed ')
+			print(cc+' - ... ')
 			
-	print('\n* Example 1 [command]: [dispmsg]')
+	print('\n* Example 1 [command]: [top7]')
 	print('* Example 2 [command message_id]: [id 144]')
-	print('* Example 3 [command option file_name]: [dispatt decr all]\n')
+	print('* Example 3 [command]: [decratt]')
+	print('* Example 4 [commands 1-3 in 1 line]: [idde 144]\n')
 	# print('TIP: you can use commands without underscore character _\n')
 
 	
@@ -74,6 +90,13 @@ def reread_cred(pp,newest_file):
 # 
 
 def send_input(json_obj , newest_file, pp, send_file=False, send_public=False, msg_receiver_s='',subj=''):
+
+	# print(json_obj)
+	if subj=='':
+		if json_obj["default_title"].lower()== '__RANDOM__'.lower():
+			subj=iop.get_rand_lorem()
+		else:
+			subj=json_obj["default_title"]
 
 	# get aliases:
 	only_return_book=False
@@ -155,14 +178,21 @@ def send_input(json_obj , newest_file, pp, send_file=False, send_public=False, m
 	msg_content=''
 	
 	if send_public:
-		subj=iop.input_prompt(propmtstr='\n Enter message subject: ', confirm=True, soft_quite=True) # if empty - quit sending ... 
+		subj=iop.input_prompt(propmtstr='\n Enter message subject: ', confirm=False, soft_quite=True) # if empty - quit sending ...
+	else:
+	
+		subjq=iop.input_prompt(propmtstr='\n Type message subject (or hit enter to default='+subj+'): ', confirm=False, soft_quite=True) # if empty - quit sending ... 
+		if subjq!='':
+			subj=subjq
+		
 		
 	if send_file:
 		msg_content=iop.select_file(tmppath='my_files')	
 	else:	
 		# 3. prompt for content -> save to attachment
-		msg_content=iop.input_prompt(propmtstr='\n Enter message text/content: ', confirm=True, soft_quite=True) # if empty - quit sending ... 
-	
+		# msg_content=iop.input_prompt(propmtstr='\n Enter message text/content: ', confirm=True, soft_quite=True) # if empty - quit sending ... 
+		propmtstr='Type message content. End typing with "endedit" or quit mail with "quitmail"\nFirst line:'
+		msg_content=iop.input_multiline(propmtstr)
 	
 	
 	if msg_content in ['','q']:
@@ -247,212 +277,202 @@ def cmd_loop(pp, newest_file):	#json_obj,
 		cmd_arr=cmd_inp.split(' ')
 		cmd_arr[0]=cmd_arr[0].lower()
 		
-		if 'help' in cmd_lower:
-			print_commands()
-			print('\n>>To exit app enter q or quit or exit<<\n')
-		else:
-			for cc in mailing_cmds:
-			
-				if cc==cmd_arr[0]: # in cmd_lower:
-					# cur_cmd=cc
-					
-					if cmd_arr[0]=='saveaddr':
-						if len(cmd_arr)<2 and selected_id=='':
-							print('This command requires to have selected id first or additional argument - email address.')
-							continue
-					
-					elif cc in mailing_cmds_req_id and selected_id=='': # OK
-						print('This command requires to have selected id first. Use command [id]')
-						continue
-					
-					if 'id' in cc: # OK
-						# tmp=str(mailing_cmd_options[cc])
-						if len(cmd_arr)<2:
-							print('This command requires to have at least 1 additional argument - message id.')
-							continue
-							
-						### RUN 
-						selected_id=str(cmd_arr[1])
-						wrk.download_msg(json_obj,selected_id, pp, print_short=True)
-						
-					elif cmd_arr[0] in ['search','top7','top7new']: #OK
-						
-						mail_from=json_obj["email_addr"]	
-						mail_from_pswd=json_obj["email_password"]
-						imap_addr=json_obj["imap_addr"]
-						dopt={}
-						
-						if cmd_arr[0]=='top7':
-							dopt={'last_msg_limit':7, 'only_new':'no', 'date_since':'2020-01-01'}
-						elif cmd_arr[0]=='top7new':
-							dopt={'last_msg_limit':7, 'only_new':'yes', 'date_since':'2020-01-01'}
-						
-						sres=mbox.search_incoming(mail_from, mail_from_pswd, imap_addr,  def_opt_init=dopt )
-						iop.display_msg_dict(sres,'... no messages found ...',header='\nFound messages:',raw=False)
-							
-					elif cmd_arr[0]=='dispmsg':  # OK
-						if len(cmd_arr)==1:
-							wrk.print_msg(json_obj,gpgpass, '', selected_id,pp,decrypted=False)
-						elif cmd_arr[1]=='decr':
-							wrk.print_msg(json_obj,gpgpass, '',selected_id,pp,decrypted=True)
-						else:
-							wrk.print_msg(json_obj,gpgpass, '', selected_id,pp,decrypted=False)
-							
-					
-					elif cmd_arr[0]=='decrmsg': # OK
-						dm=wrk.decrypt_msg(json_obj,selected_id, pp, gpgpass, aes256pp='')		
-						# print('\n\n\n'+dm+'\n\n\n')
-						json_obj=reread_cred(pp,newest_file)
-						
-					elif cmd_arr[0]=='dispatt': #OK
-					
-						if len(cmd_arr)==1:
-							wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name='all',decrypted=False)
-						elif cmd_arr[1]=='decr':
-							if len(cmd_arr)>2:
-								wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name=cmd_arr[2],decrypted=True)
-							else:
-								wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name='all',decrypted=True)
-						else:
-							wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name=cmd_arr[1],decrypted=False)
-					
-					elif cmd_arr[0]=='decratt': # OK
-						
-						
-						att_name='all'
-						if len(cmd_arr)>1:
-							att_name=cmd_arr[1]
-							if att_name.lower()=='all':
-								att_name='all'
-						wrk.decrypt_attachment(json_obj,gpgpass,'',selected_id,pp,att_name,print_content=True)
-					
-					elif cmd_arr[0]=='getatt': # multip arg
-						
-						att_name='all'
-						if len(cmd_arr)>1:
-							att_name=cmd_arr[1]
-							if att_name.lower()=='all':
-								att_name='all'
-						wrk.download_att(json_obj,selected_id,pp,att_name,print_content=False)
-					
-					elif cmd_arr[0]=='saveaddr': # OK
-						# print("add_email_addr_book(emadr, json_conf , newest_file, pswd)")
-						if len(cmd_arr)>1:
-							iop.add_email_addr_book(cmd_arr[1], json_obj , newest_file, pp)
-						else:
-							tmpobj=wrk.load_from_archive(selected_id,pp)
-							emadr=tmpobj["from"]
-							iop.add_email_addr_book(emadr, json_obj , newest_file, pp)
-							
-						json_obj=reread_cred(pp,newest_file)
-						
-					elif cmd_arr[0]=='printaddrbook':
-						iop.print_addr_book(json_obj)
-						
-					elif cmd_arr[0]=='editaddrbook': # OK
-						if len(cmd_arr)>1:
-							iop.edit_addr_book(json_obj , newest_file, pp,cmd_arr[1])
-						else:
-							iop.edit_addr_book(json_obj , newest_file, pp )
-					
-						iop.edit_addr_book(json_obj , newest_file, pp)
-						json_obj=reread_cred(pp,newest_file)
-						
-					elif cmd_arr[0]=='cleararchive': # OK
-						# print("clear_local_mails(json_obj, newest_file, pswd)")
-						# iop.clear_local_mails(json_obj, newest_file, pp)
-						iop.clear_archive()
-						json_obj=reread_cred(pp,newest_file)
-						
-					# clear_my_files
-					elif cmd_arr[0]=='clearmyfiles': # OK
-						iop.clear_archive('clear_my_files')
-					elif cmd_arr[0]=='listmyfiles':
-						iop.list_files('my_files',True)
-					
-					elif cmd_arr[0]=='dispattlist': # OK
-						wrk.print_msg_att_list(json_obj,selected_id,pp)
-						
-					elif cmd_arr[0] in ['send','sendfile','send_public','reply','replyfile','reply_public']:
-						file_att, subj, msg_receiver, text_part='','','',''
-						potlist=[]
-						if cmd_arr[0]=='send':
-							# print(msg_obj)
-							potlist=send_input(json_obj , newest_file, pp)
-						elif cmd_arr[0]=='sendfile':
-							potlist=send_input(json_obj , newest_file, pp, True)							
-						elif cmd_arr[0]=='send_public':
-							potlist=send_input(json_obj , newest_file, pp, False, True)		
-							
-						elif cmd_arr[0]=='reply':
-							msg_obj=wrk.get_msg(json_obj,selected_id,pp) # need to correct to: remove my addr, if none - put from addr
-							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
-							
-							potlist=send_input(json_obj , newest_file, pp, False, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])		
-						elif cmd_arr[0]=='replyfile':
-							msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
-							
-							potlist=send_input(json_obj , newest_file, pp, True, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])			
-						elif cmd_arr[0]=='reply_public':
-							msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-							newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
-							
-							potlist=send_input(json_obj , newest_file, pp, False, True, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])
-							
-							
-						
-						if potlist[0]!='':
-						
-							for pt in potlist:
-								
-								msg_receiver=pt[2]
-								file_att=pt[0]
-								subj=pt[1]
-								text_part=pt[3]
-								# json_obj=reread_cred(pp,newest_file)
-								if msg_receiver=='':
-									continue
-									
-								elif cmd_arr[0]!='send_public' and file_att=='':
-									print("Some error sending file - could not encrypt file ... ? ")
-									
-								else:
-								
-									mail_from=json_obj["email_addr"]	
-									mail_from_pswd=json_obj["email_password"]
-									
-									
-									retv=mbox.send_email(json_obj["smtp_addr"],mail_from, mail_from_pswd, mail_from, msg_receiver, [file_att] , subj, text_part)
-									print(retv)
-							
-						# exit()
-					elif cmd_arr[0] in ['reply','replyfile','reply_public']:
-						# get current mail emails:
-						# wrk.print_msg(json_obj,gpgpass, '', selected_id,pp,decrypted=False)
-						msg_obj=wrk.get_msg(json_obj,selected_id,pp)
-						
-						send_input(json_obj , newest_file, pp, False, False, msg_receiver_s=','.join(msg_obj["to"]),subj='RE: '+msg_obj['subj'])
-						
-					
-					elif cmd_arr[0]=='reply':
-						print('Option not yet available')
-						# exit()
-					elif cmd_arr[0]=='send_public':
-						print('Option not yet available')
-						# exit()	
-					elif 'key_' in cmd_arr[0]:
-					
-						if cmd_arr[0]=='key_list':
-							iop.gpg_uids(False,True)
-						elif cmd_arr[0]=='key_list_secret':
-							iop.gpg_uids(True,True)						
-						else:						
-							key_dict={'key_generate':"gen-key",'key_import':"import",'key_export':"export",'key_export_secret':"export-secret",'key_delete':"delete-pub-key",'key_delete_secret':"delete-priv-key"}
-							if cmd_arr[0] in key_dict:
-								# print(cmd_arr[0],key_dict[cmd_arr[0]])
-								iop.manage_keys(gpgpass,key_dict[cmd_arr[0]])
+		if cmd_arr[0] in mailing_cmds:
+	
+			if cmd_arr[0] in mailing_cmds_req_id and selected_id=='':
+				
+				print('This command requires to have id selected first.')
+				
+			elif cmd_arr[0] in ['idde','id'] and len(cmd_arr)<2:
+				
+				print('This command requires second argument - message id.')
+				
+			elif cmd_arr[0]=='help':
+				print_commands()
+				print('\n>>To exit app enter q<<\n')
 
+				# '','editappsettings'
+			elif cmd_arr[0]=='editappsettings':
+				iop.edit_app_settings(json_obj,pp)
+				
+				
+			elif cmd_arr[0] in ['idde','id']:
+				
+				selected_id=str(cmd_arr[1])
+				wrk.download_msg(json_obj,selected_id, pp, print_short=True)
+				
+				if cmd_arr[0]=='idde':
+					decrres=wrk.decrypt_msg(json_obj,selected_id, pp, gpgpass, aes256pp='')		
+					if decrres==False:
+						decrres=wrk.decrypt_attachment(json_obj,gpgpass,'',selected_id,pp,'all',print_content=True)
+					
+					json_obj=reread_cred(pp,newest_file)
+			
+				
+			elif cmd_arr[0] in ['search','top7','top7new']: #OK
+				
+				mail_from=json_obj["email_addr"]	
+				mail_from_pswd=json_obj["email_password"]
+				imap_addr=json_obj["imap_addr"]
+				dopt={}
+				
+				if cmd_arr[0]=='top7':
+					dopt={'last_msg_limit':7, 'only_new':'no', 'date_since':'2020-01-01'}
+				elif cmd_arr[0]=='top7new':
+					dopt={'last_msg_limit':7, 'only_new':'yes', 'date_since':'2020-01-01'}
+				
+				sres=mbox.search_incoming(mail_from, mail_from_pswd, imap_addr,  def_opt_init=dopt )
+				iop.display_msg_dict2(sres,'... no messages found ...',header='\nFound messages:')
+					
+			elif cmd_arr[0]=='dispmsg':  # OK
+				if len(cmd_arr)==1:
+					wrk.print_msg(json_obj,gpgpass, '', selected_id,pp,decrypted=False)
+				elif cmd_arr[1]=='decr':
+					wrk.print_msg(json_obj,gpgpass, '',selected_id,pp,decrypted=True)
+				else:
+					wrk.print_msg(json_obj,gpgpass, '', selected_id,pp,decrypted=False)
+					
+			
+			elif cmd_arr[0]=='decrmsg': # OK
+				dm=wrk.decrypt_msg(json_obj,selected_id, pp, gpgpass, aes256pp='')		
+				# print('\n\n\n'+dm+'\n\n\n')
+				json_obj=reread_cred(pp,newest_file)
+				
+			elif cmd_arr[0]=='dispatt': #OK
+			
+				if len(cmd_arr)==1:
+					wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name='all',decrypted=False)
+				elif cmd_arr[1]=='decr':
+					if len(cmd_arr)>2:
+						wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name=cmd_arr[2],decrypted=True)
+					else:
+						wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name='all',decrypted=True)
+				else:
+					wrk.display_att(json_obj,gpgpass,'', selected_id,pp,att_name=cmd_arr[1],decrypted=False)
+			
+			elif cmd_arr[0]=='decratt': # OK
+				
+				att_name='all'
+				if len(cmd_arr)>1:
+					att_name=cmd_arr[1]
+					if att_name.lower()=='all':
+						att_name='all'
+				wrk.decrypt_attachment(json_obj,gpgpass,'',selected_id,pp,att_name,print_content=True)
+			
+			elif cmd_arr[0]=='getatt': # multip arg
+				
+				att_name='all'
+				if len(cmd_arr)>1:
+					att_name=cmd_arr[1]
+					if att_name.lower()=='all':
+						att_name='all'
+				wrk.download_att(json_obj,selected_id,pp,att_name,print_content=False)
+			
+			elif cmd_arr[0]=='saveaddr': # OK
+			
+				if len(cmd_arr)>1:
+					iop.add_email_addr_book(cmd_arr[1], json_obj , newest_file, pp)
+				else:
+					tmpobj=wrk.load_from_archive(selected_id,pp)
+					emadr=tmpobj["from"]
+					iop.add_email_addr_book(emadr, json_obj , newest_file, pp)
+					
+				json_obj=reread_cred(pp,newest_file)
+				
+			elif cmd_arr[0]=='printaddrbook':
+				iop.print_addr_book(json_obj)
+				
+			elif cmd_arr[0]=='editaddrbook': # OK
+				if len(cmd_arr)>1:
+					iop.edit_addr_book(json_obj , newest_file, pp,cmd_arr[1])
+				else:
+					iop.edit_addr_book(json_obj , newest_file, pp )
+			
+				json_obj=reread_cred(pp,newest_file)
+				
+			elif cmd_arr[0]=='cleararchive': # OK
+				iop.clear_archive()
+				json_obj=reread_cred(pp,newest_file)
+				
+			# clear_my_files
+			elif cmd_arr[0]=='clearmyfiles': # OK
+				iop.clear_archive('clear_my_files')
+			elif cmd_arr[0]=='listmyfiles':
+				iop.list_files('my_files',True)
+			
+			elif cmd_arr[0]=='dispattlist': # OK
+				wrk.print_msg_att_list(json_obj,selected_id,pp)
+				
+			elif cmd_arr[0] in ['send','sendfile','send_public','reply','replyfile','reply_public']:
+				iop.print_addr_book(json_obj)
+				file_att, subj, msg_receiver, text_part='','','',''
+				potlist=[]
+				
+			
+				if cmd_arr[0]=='send':
+					# print(msg_obj)
+					potlist=send_input(json_obj , newest_file, pp)
+				elif cmd_arr[0]=='sendfile':
+					potlist=send_input(json_obj , newest_file, pp, True)							
+				elif cmd_arr[0]=='send_public':
+					potlist=send_input(json_obj , newest_file, pp, False, True)		
+					
+				elif cmd_arr[0]=='reply':
+					msg_obj=wrk.get_msg(json_obj,selected_id,pp) # need to correct to: remove my addr, if none - put from addr
+					newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+					
+					potlist=send_input(json_obj , newest_file, pp, False, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])		
+				elif cmd_arr[0]=='replyfile':
+					msg_obj=wrk.get_msg(json_obj,selected_id,pp)
+					newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+					
+					potlist=send_input(json_obj , newest_file, pp, True, False, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])			
+				elif cmd_arr[0]=='reply_public':
+					msg_obj=wrk.get_msg(json_obj,selected_id,pp)
+					newto=get_new_to_addr_list(json_obj["email_addr"],msg_obj)
+					
+					potlist=send_input(json_obj , newest_file, pp, False, True, msg_receiver_s=','.join(newto),subj='RE: '+msg_obj['subj'])
+				
+					
+				
+				if potlist[0]!='':
+				
+					for pt in potlist:
+						
+						msg_receiver=pt[2]
+						file_att=pt[0]
+						subj=pt[1]
+						text_part=pt[3]
+						# json_obj=reread_cred(pp,newest_file)
+						if msg_receiver=='':
+							continue
+							
+						elif cmd_arr[0]!='send_public' and file_att=='':
+							print("Some error sending file - could not encrypt file ... ? ")
+							
+						else:
+						
+							mail_from=json_obj["email_addr"]	
+							mail_from_pswd=json_obj["email_password"]
+							
+							
+							retv=mbox.send_email(json_obj["smtp_addr"],mail_from, mail_from_pswd, mail_from, msg_receiver, [file_att] , subj, text_part)
+							print(retv)
+					
+			
+			elif 'key_' in cmd_arr[0]:
+			
+				if cmd_arr[0]=='key_list':
+					iop.gpg_uids(False,True)
+				elif cmd_arr[0]=='key_list_secret':
+					iop.gpg_uids(True,True)						
+				else:						
+					key_dict={'key_generate':"gen-key",'key_import':"import",'key_export':"export",'key_export_secret':"export-secret",'key_delete':"delete-pub-key",'key_delete_secret':"delete-priv-key"}
+					if cmd_arr[0] in key_dict:
+						# print(cmd_arr[0],key_dict[cmd_arr[0]])
+						iop.manage_keys(gpgpass,key_dict[cmd_arr[0]])
+		else:
+			print('No such command!')
 				
 		json_obj=reread_cred(pp,newest_file)
 		
