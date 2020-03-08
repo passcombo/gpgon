@@ -1,12 +1,4 @@
-# user cmds:
-# gpg_uids, edit_addr_book, add_email_addr_book
 
-			
-# file encryption:				
-# gpg --recipient jim@dundermifflin.com --output dwight.jpg.pgp --encrypt dwight.jpg
-# Then attach it to your email like you would any file. When the recipient has recieved the message, they can run the following command to decrypt it:
-
-# gpg --output dwight.jpg --decrypt dwight.jpg.gpg
 	
 
 import re
@@ -17,19 +9,260 @@ import traceback
 import subprocess
 import json
 import shutil
-# import ssl
-
-# import smtplib
+import random
 import time
-# import imaplib
+from termcolor import colored
 
-def lorem_ipsum(): #iop.lorem_ipsum()
+
+def alias_mapping(allist): # address_aliases(get_wallet(True))
+	alias_map={}
+	for aa in allist:
+		# if value contains '_' split
+		xx=aa.split('_')
+		
+		tmpa=''
+		if len(xx)>1:
+			lll=3
+			if len(xx)>2:
+				lll=2
+				
+			for xi in xx:
+				tmpa+=xi[:min([len(xi), lll])]
+		else:
+			tmpa=aa[:max([len(aa), 5])] 
+			
+		while len(tmpa)<5: # safer
+			tmpa+=tmpa
+			
+		iter=1
+		while tmpa in alias_map.values():
+			tmpa+=str(iter)
+			iter+=1
+		
+		alias_map[aa]=tmpa #.append([aa, tmpa])
+		
+	return alias_map	
+
+
+def print_current_settings(set_name,json_conf,set_name_alia=[]):
+	
+	hidden_par=["send_internal_id","address_book"] #,"refresh_token","consumer_key","consumer_secret"]
+
+	if len(set_name_alia)>0:
+		print('\nCurrent app settings [Alias][Name][Value]:')
+	else:
+		print('\nCurrent app settings [Name][Value]:')
+		
+	for kkk in set_name: #jct,vv in json_conf.items():
+		if kkk in hidden_par:
+			continue
+	
+		if kkk in json_conf:
+			vv=json_conf[kkk]
+			jct=kkk
+			
+			if len(set_name_alia)>0:
+				print('['+set_name_alia[jct]+']['+jct+']['+vv+']')
+			else:
+				print('['+jct+']['+vv+']')
+			
+			
+
+def edit_app_settings(json_conf,pswd):
+
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","default_title","gpg_password"]
+	
+	set_name_alia=alias_mapping(set_name)
+	
+	newest_date, newest_file, filed = get_config_file()	
+	
+	toedit=''
+	
+	while True:
+		print_current_settings(set_name,json_conf,set_name_alia)
+		
+		toedit=optional_input('Enter alias to edit value or quite [q] or quite and save [S]: ', options_list=list(set_name_alia.values())+['S'], soft_quite=True)
+		if toedit=='S':
+			saving_encr_cred( json.dumps(json_conf) , newest_file, pswd)
+			break
+		elif toedit in ['q','']:
+			break
+			
+		nameii = [key  for (key, value) in set_name_alia.items() if value == toedit]
+		print('Editing '+nameii[0]+', current value = '+json_conf[nameii[0]])
+		newvv=''
+		newvv=input_prompt('Type new value (enter for empty): ', confirm=True, soft_quite=True)
+			
+		json_conf[nameii[0]]=newvv
+
+	if toedit=='':
+		print('\n! Exit editing without saving, current setup:')
+		print_current_settings(set_name,json_conf,set_name_alia)
+	else:
+		json_conf=json.dumps(json_conf)
+		saving_encr_cred( json_conf, newest_file, pswd)
+		# print('App settings changed - exiting. Please start the app again.')
+		# exit()
+		
+		
+
+def read_app_settings():
+		
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","default_title","gpg_password","address_book","send_internal_id"]
+	
+	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","__RANDOM__","semioptional",{},"0"]
+	
+	musthave=['email_addr',"email_password","imap_addr","smtp_addr"]
+	
+	DEAMON_DEFAULTS={}
+	for ij,sn in enumerate(set_name):
+		if type(set_value)==type('asdf'):
+			DEAMON_DEFAULTS[sn]=set_value[ij].replace("optional","").replace("semioptional","")
+		else:
+			DEAMON_DEFAULTS[sn]=set_value[ij]
+			
+	json_conf=''	
+	
+	newest_date, newest_file, filed = get_config_file()	
+	pswd=''
+	
+	if newest_file!='':
+		# print('read file - edit in options then exit and force enter again ... ')
+		
+		try_decr=True
+		decr_str=''
+		
+		while try_decr:
+			pp=ask_password(newest_file)
+			
+			try:
+				str_rep=decrypt_cred(pp,newest_file) 
+				if 'failed' in str_rep:
+					print("Your password didn't match the config file ... Try another password or quit [q]")
+					continue
+				else:
+					decr_str=str_rep.split(lorem_ipsum())
+					if len(decr_str)<2:
+						print("Your password didn't match the config file ... Try another password or quit [q]")
+						continue
+						
+					decr_str=decr_str[1]
+					try_decr=False
+					pswd=pp
+			except:
+				err_track = traceback.format_exc()
+				print(err_track)
+				print("Your password didn't match the config file ... Try another password or quit [q]")
+			
+		if try_decr==False:
+			json_conf=json.loads(json.dumps(DEAMON_DEFAULTS))
+			json_conf_tmp=json.loads(decr_str)
+			for jct,vv in json_conf_tmp.items():
+				# print(jct,jct in hidden_par)
+				
+				if jct in json_conf: # and jct not in ["consumer_key",	"consumer_secret"]:
+					json_conf[jct]=vv
+					if jct in musthave:
+						musthave.remove(jct)
+					
+			if len(musthave)>0:
+				print('Elements missing in config file ',str(musthave))
+				exit()
+				
+			saving_encr_cred( json.dumps(json_conf), newest_file, pswd)
+	else:
+		
+		pp=ask_password()
+		pswd=pp
+		
+		json_obj=json.loads(json.dumps(DEAMON_DEFAULTS))
+		print('\nCreating new generic config ... ') 
+		
+		for kk in set_name: #json_obj.keys():
+			
+			if kk in musthave:
+				strtmp=''
+				
+				while strtmp=='':
+					strtmp=input_prompt('> Type '+str(kk)+' : ',True,True)
+					if strtmp=='':
+						print('This value cannot be empty - try again...')
+					
+					else:
+						json_obj[kk]=strtmp
+			else:
+				json_obj[kk]=input_prompt('> Type value for '+str(kk)+' or hit enter for empty: ',True,True) 
+		
+		#iop
+		print('Creating done, accepted values:\n'+str(json_obj) )
+		
+		newest_file=list(filed.keys())
+		newest_file=newest_file[0]
+		
+		json_conf=json.dumps(json_obj)
+		saving_encr_cred( json_conf, newest_file, pswd)
+		
+	
+	return json_conf, pswd, newest_file
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def lorem_ipsum(): 
 
 	litmp="""
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut gravida, nisi sit amet bibendum commodo, mi nulla elementum sapien, rhoncus tempor dui mi ut dolor. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sollicitudin pulvinar porta. Praesent viverra laoreet accumsan. Sed accumsan mollis diam, quis sollicitudin arcu accumsan non. Proin gravida iaculis sapien ut placerat. Sed vehicula magna in quam interdum aliquet. Nam tempor metus id dui molestie maximus.
 """
 
 	return litmp
+	
+	
+def get_rand_lorem(maxl=21):
+	strtmp=list(set(  lorem_ipsum().replace(',','').replace('\n',' ').replace('.','').lower().split(' ') ))
+	# print(strtmp)
+	vmin=0
+	vmax=len(strtmp)-1
+	randii=[]
+	rtitle=''
+	
+	while len(rtitle)<maxl:
+		r1 = random.randint(vmin, vmax)
+		if r1 not in randii:
+			randii.append(r1)
+			if rtitle=='':
+				rtitle=strtmp[r1][0].upper()+strtmp[r1][1:]
+			else:
+				rtitle+=' '+strtmp[r1]
+				
+	return rtitle
 	
 	
 def list_files(dirpath,toprint=False):
@@ -185,9 +418,56 @@ def manage_keys(passphrase,selcmd): #["gen-key","import","export","export-secret
 	str_rep=subprocess.getoutput(cmddict[selcmd])
 	print('Exported key '+gpguid+' to my_files directory: '+exp_dir_file)
 	
-
-
 	
+def retspaces(nn):
+
+	if nn<=0:
+		return ''
+		
+	strr=''
+	for ii in range(nn):
+		strr+=' '
+		
+	return strr
+	
+	
+	
+	
+def display_msg_dict2(msgdict,nomsgfound='',header='\nFound messages:'):
+
+	printclr(header)
+	printclr("  ID  |   Date   | Att# | Email |              From              | Subject ")
+	        # ID: 76   2020-03-05   1 EmailSize: 0.0 MB From: kbednarek418@gmail.com Subject: Cogito ergo sum
+		
+	if len(msgdict)<1:
+		print(nomsgfound)
+		return
+		
+	ids=[ii for ii in msgdict.keys() ]
+	ids.sort(reverse = True) 
+	
+	for ii in ids : #rr,rv in msgdict.items():
+		# print(rr,rv)
+		rr=ii
+		rv=msgdict[ii]
+		strid=str(rv["ID"])
+		strid=retspaces(6-len(strid))+strid
+		strdate=str(rv["Date"])
+		# strid=retspaces(6-len(strdate))+strdate
+		strarrc=str(rv["Attachments"])
+		strarrc=retspaces(4-len(strarrc))+strarrc+'  '
+		strmb=str(rv["EmailSize"])
+		# print(len(strmb))
+		strmb=retspaces(7-len(strmb))+strmb
+		strfrom=xtract_email(rv["From"])
+		strfrom=strfrom+retspaces(32-len(strfrom))
+		
+		# printclr("  ID  |   Date   | Att# | Email[MB] |          From          | Subject ")
+		printclr(strid+'|'+strdate+'|'+strarrc+'|'+strmb+'|'+strfrom+'|'+str(rv["Subject"]) )
+		# print('ID: '++' Date: '++' Attachments: '++' EmailSize: '++' From: '++' Subject: '+str(rv["Subject"]) )
+			
+			
+			
 
 def display_msg_dict(msgdict,nomsgfound='',header='\nFound messages:',raw=False):
 	
@@ -233,17 +513,19 @@ def clear_archive(myfiles=''):
 			print('[!] Could not clear archive.')
 	
 	
-	
+def printclr(strpr,clr='grey',attrs=['bold']):
+	# print(type(strpr),type(clr),type(attrs) )
+	print(colored(strpr,clr,attrs=attrs) )	
 
 		
 def print_addr_book(json_conf,only_return=False):
 	
 	if not only_return:
-		print('\n=============== Address book ===============')
-		print('[ALIAS] : [FULL EMAIL ADDRESS] : [ENCRYPTION TYPE] : [ENCRYPTION KEY] : [DECRYPTION KEY]\n')
+		printclr('\n=============== Address book ===============')
+		printclr('[ALIAS] : [FULL EMAIL ADDRESS] : [ENCRYPTION TYPE] : [ENCRYPTION KEY] : [DECRYPTION KEY]\n')
 	
 	if len(json_conf["address_book"].keys())==0:
-		print('\n ... book is empty ... \n')
+		printclr('\n ... book is empty ... \n')
 		return {}
 	
 	addr_list=json_conf["address_book"].keys()
@@ -269,7 +551,7 @@ def print_addr_book(json_conf,only_return=False):
 			# tmp_active='Yes'
 		
 		if not only_return:
-			print("["+tmp_alias+"] : ["+tmp_addr+"] : ["+tmp_encr+"] : ["+encr_key+"] : ["+tmp_decr+"]")
+			printclr("["+tmp_alias+"] : ["+tmp_addr+"] : ["+tmp_encr+"] : ["+encr_key+"] : ["+tmp_decr+"]")
 		
 	return addr_alia
 		
@@ -293,11 +575,11 @@ def edit_addr_book(json_conf , newest_file, pswd, addroralia=''):
 
 	addr_alia=print_addr_book(json_conf)
 	if addr_alia=={}:
-		print('Book is empty - cannot edit - first add some addresses ...')
+		printclr('Book is empty - cannot edit - first add some addresses ...','red')
 		return #json_conf
 	
 	avuids=gpg_uids()
-	print('\nINFO: Available public keys [gpg uids]: '+str(gpg_uids()))
+	printclr('\nINFO: Available public keys [gpg uids]: '+str(gpg_uids()),'green')
 			
 	ync=addroralia
 
@@ -319,7 +601,7 @@ def edit_addr_book(json_conf , newest_file, pswd, addroralia=''):
 				break
 	
 	if set_key!='':
-		print("Editing "+set_key)
+		printclr("Editing "+set_key,'red')
 	
 		encr_type=optional_input('> Enter encryption type [none,password,pgp]? Type "del" to remove entire record or quit: ', ['none','password','pgp','del','q'], True)
 		
@@ -341,7 +623,7 @@ def edit_addr_book(json_conf , newest_file, pswd, addroralia=''):
 			json_conf["address_book"][set_key]={"encryption_type": encr_type, "pgp_id":tmpr3}
 			
 		elif encr_type=='pgp':
-			print('To use PGP first you need to add some public keys... Try again later.')
+			printclr('To use PGP first you need to add some public keys... Try again later.','yellow')
 			
 		# else:
 			# json_conf["address_book"][set_key]={"encryption_type": encr_type}
@@ -351,7 +633,7 @@ def edit_addr_book(json_conf , newest_file, pswd, addroralia=''):
 			
 		saving_encr_cred( json.dumps(json_conf), newest_file, pswd)
 	else:
-		print("Address or alias ["+ync+"] not found in book...")
+		printclr("Address or alias ["+ync+"] not found in book...",'yellow')
 	
 	
 	
@@ -377,7 +659,7 @@ def add_email_addr_book(emadr, json_conf , newest_file, pswd, encr_type='', sym_
 		if ync.lower()=='y':
 			
 			avuids=gpg_uids()
-			print('Available public keys [gpg uids]: '+str(avuids))
+			printclr('Available public keys [gpg uids]: '+str(avuids),'green')
 			
 			encr_type=optional_input('> Enter encryption type [none,password,pgp]? ', ['none','password','pgp'], True)
 				
@@ -392,7 +674,7 @@ def add_email_addr_book(emadr, json_conf , newest_file, pswd, encr_type='', sym_
 				json_conf["address_book"][emadr]={"encryption_type": encr_type, "pgp_id":tmpr3}
 			
 			elif encr_type=='pgp':
-				print('To use PGP first you need to add some public keys... Try again later.')	
+				printclr('To use PGP first you need to add some public keys... Try again later.','yellow')	
 			else:
 				json_conf["address_book"][emadr]={"encryption_type": encr_type}
 				
@@ -402,7 +684,7 @@ def add_email_addr_book(emadr, json_conf , newest_file, pswd, encr_type='', sym_
 			json_conf["address_book"][emadr]["decryption_password"]=tmpr2
 			
 			
-			print('Added to local address book:\n'+str(json_conf["address_book"][emadr]))
+			printclr('Added to local address book:\n'+str(json_conf["address_book"][emadr]),'green')
 			# json_conf=json.dumps(json_conf)
 			saving_encr_cred( json.dumps(json_conf), newest_file, pswd)	
 		
@@ -581,17 +863,47 @@ def testpassbasic(strpass):
 		
 		return 'Password should contain at least one number!'
 			
+			
+def input_multiline(propmtstr,endstr='endedit',quitmail='quitmail'):
+	strcont=''
+	# lastline=str(input(propmtstr))
+	# strcont+=lastline
+	tmptxt=propmtstr
+	while True: #
+		
+		lastline=str(input(tmptxt))
+		tmpll=lastline.lower().strip()
+		if tmpll==quitmail:
+			return ''
+		elif tmpll==endstr :
+			break
+			
+		tmptxt='Next line:'
+		strcont+='\n'+lastline
+		
+	if strcont=='':
+		strcont=get_rand_lorem(64)
+		
+	return strcont
+	
+	
+	
+			
 # if str contains password - forbid chars are "'|-			
 def input_prompt(propmtstr, confirm=False, soft_quite=False): # input_test should be function returning '' if ok		
 	
+	propmtstr=colored(propmtstr, 'cyan',attrs=['bold'])	
 	pp=''
 	forbidpass=["'",'"',"|","-"]
 	while True: # confirmation loop
-		
+		# print(637)
 		pp=str(input(propmtstr)  )
 		pp=clear_whites(pp)	
+		# print(pp)
 		if pp=='q' or pp=='': # default quit option always avail
+			# print(642)
 			if soft_quite:
+				# print(644)
 				return ''
 			else:
 				exit()
@@ -600,7 +912,7 @@ def input_prompt(propmtstr, confirm=False, soft_quite=False): # input_test shoul
 			tmpt=False
 			for zzz in forbidpass:
 				if zzz in pp:
-					print('Your password contains forbidden character from list'+str(forbidpass)+':'+zzz+' Try avoiding very special characters - best to use very long alphanumeric passwords.')
+					printclr('Your password contains forbidden character from list'+str(forbidpass)+':'+zzz+' Try avoiding very special characters - best to use very long alphanumeric passwords.','red')
 					tmpt=True
 					break
 			if tmpt:
@@ -624,7 +936,7 @@ def input_prompt(propmtstr, confirm=False, soft_quite=False): # input_test shoul
 	
 def optional_input(propmtstr, options_list, soft_quite=False):
 
-	# print(propmtstr)
+	propmtstr=colored(propmtstr, 'cyan',attrs=['bold'])	
 	
 	while True:
 		
@@ -636,15 +948,15 @@ def optional_input(propmtstr, options_list, soft_quite=False):
 			if soft_quite:
 				return ''
 			else:
-				print('Exiting app')
+				printclr('Exiting app','yellow')
 				exit()
 			
 		splp=pp.split(' ')
 		if splp[0] in options_list:
 			return pp
 		else:
-			print('[!] Enterred value must match one of:\n',str(options_list))
-			print('    Try again...' )
+			printclr('[!] Enterred value must match one of:\n'+str(options_list),'yellow')
+			printclr('    Try again...' ,'green')
 			
 			
 
@@ -654,6 +966,8 @@ def ask_password(config_file=''): # mode = wallet or deamon
 	propmtstr='Enter strong main password to encrypt your email credentials on this device: '
 	if config_file!='':
 		propmtstr='Enter relevant main password to decrypt config file ['+config_file+']: '
+		
+	propmtstr=colored(propmtstr, 'cyan',attrs=['bold'])	
 		
 	while True: 
 		pp=input(propmtstr)  
@@ -666,7 +980,7 @@ def ask_password(config_file=''): # mode = wallet or deamon
 			return pp
 			
 		else:
-			print(strt, 'Try again or quit [q]...')
+			printclr(strt+ '\nTry again or quit [q]...','green')
 			
 encr_ext='.targz'
 # also encrypts file if str_cont is a file!
@@ -728,12 +1042,12 @@ def saving_encr_cred(json_str,fname,pp):
 	if os.path.exists(fname):
 		os.remove(fname)
 
-	print('Saving encrypted credentials')
+	# print('Saving encrypted credentials')
 	tmpfile=createtmpfile(json_str)
 	gpg_tmp=gpgstr+pp+" -o "+fname+" -c "+tmpfile
 	# print('Encrypting using gnupg')
 	str_rep=subprocess.getoutput(gpg_tmp)
-	print(str_rep)
+	# print(str_rep)
 	llll=lorem_ipsum()
 	createtmpfile(encr_str=llll+llll+llll) #overwrite
 
@@ -802,7 +1116,6 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 	
 	ensure_clear_path(outputfile)
 	
-	
 			
 	if aes256pp==''  or aes256pp=='pgp': # if no decrypt pass - first try pgp
 		try:
@@ -814,6 +1127,7 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 			
 			if '@' in str_rep: 
 				print('Decrypted using asymetric key file ['+decr_file_path+'] to ['+outputfile+']\n Delete the file after usage to stay safe!')
+				
 			else:
 				tryaes=True
 		except:
@@ -832,13 +1146,19 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 			# gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+msg_cont
 			
 			str_rep=subprocess.getoutput(gpgstr)
-			# print(gpgstr)
-			print(str_rep)
+			if 'failed:' not in str(str_rep):
+				print(str_rep)
 			
-			print('Decrypted using password to ['+outputfile+']')
+				print('Decrypted using password to ['+outputfile+']')
+			else:
+				tryaes=False
 		else:
 			print("No password provided - quit decryption...")
+			tryaes=False
 	# print('os.path.exists(outputfile)',os.path.exists(outputfile))
+	
+	
+	
 	if os.path.exists(outputfile):
 
 		if save_copy!='':
@@ -849,7 +1169,7 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 		if fileext=='txt' and print_content:
 			decr_msg=readfile(outputfile)
 			# print('844')
-			print('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n')
+			printclr('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n','grey')
 			
 		# now encrypt  outputfile to local aes
 			
@@ -865,8 +1185,6 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 		if os.path.exists(fname):
 			os.remove(fname)
 
-		# print('Saving encrypted credentials')
-		# tmpfile=iop.createtmpfile(fcont)
 		gpg_tmp=gpgstr+pp+" -o "+fname+" -c "+outputfile
 		# print('Encrypting using gnupg')
 		str_rep=subprocess.getoutput(gpg_tmp)
@@ -881,141 +1199,10 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 		# if outputfile==os.path.join('tmp','z.txt'):
 		os.remove(outputfile)
 		
-		
+	return tryaes # if False failed to decrypt ... 
 
 
 		
-def old_decr_msg(msg_cont,gpgpass='',aes256pp=''): #,msg_from
-
-	aes256pp_ajd=aes256pp #"'"+aes256pp+"'"
-
-	decr_msg_str_tmp=''
-	tryaes=False
-	
-
-	if type(msg_cont)!=type([]) and os.path.exists(msg_cont): # if it is path- try decrypt file
-		
-		decr_msg_str_tmp='Failed to decrypt file ['+msg_cont+']'
-		
-		tmpdecr=''		
-		if '.pgpkey' in msg_cont:
-			headtail=os.path.split(msg_cont)
-			tmpdecr=os.path.join('my_files',headtail[1].replace('.pgpkey.pgp','.pgpkey')) #'from_pgp_'+msg_cont.replace('.pgp','')
-		else:
-			tmpdecr='from_pgp_'+msg_cont.replace('.pgp','')	
-		
-		if aes256pp==''  or aes256pp=='pgp': # if no decrypt pass - first try pgp
-			try:
-				gpgstr="gpg -o "+tmpdecr+" -d "+msg_cont
-				if gpgpass!='':
-					gpgstr="gpg --pinentry loopback --passphrase "+gpgpass+" -o "+tmpdecr+" -d "+msg_cont
-					
-				ensure_clear_path(tmpdecr)
-					
-				str_rep=subprocess.getoutput(gpgstr)
-				if '@' in str_rep: 
-					print('Decrypted using asymetric key')
-					decr_msg_str_tmp='Decrypted file ['+msg_cont+'] to ['+tmpdecr+']\n Delete the file after usage to stay safe!'
-				else:
-					tryaes=True
-			except:
-				tryaes=True
-		else:
-			tryaes=True
-		
-		if tryaes:
-			
-			
-			if aes256pp=='':
-				# print('input aes256 password')
-				aes256pp=input_prompt(propmtstr="Enter password (AES256) to decrypt message: ", confirm=False, soft_quite=True)
-			
-			if aes256pp!='':
-				gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+msg_cont
-				
-				ensure_clear_path(tmpdecr)
-				str_rep=subprocess.getoutput(gpgstr)
-				
-				# if '@' in str_rep:
-				decr_msg_str_tmp='Decrypted file ['+msg_cont+'] to ['+tmpdecr+'] Delete the file after usage to stay safe!'
-				# decr_msg_str_tmp=readfile(tmpdecr)
-				print('Decrypted using password')
-			else:
-				print("No password provided - quit decryption...")
-				
-		print('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n')
-		# return decr_msg_str_tmp
-	else:
-		# print('decrypting file ...')
-		for cc in msg_cont:
-		# if True:
-			# cc=msg_cont
-		
-			tryaes=False
-			
-			tmpn=createtmpfile(encr_str=cc)
-			tmpdecr=os.path.join('tmp','z.txt')
-			# print('cc',cc)
-			str_rep=''
-			
-			if aes256pp=='' or aes256pp=='pgp': # if no decrypt pass - first try pgp
-				
-				try:
-				# if True:
-					gpgstr="gpg -o "+tmpdecr+" -d "+tmpn
-					if gpgpass!='':
-						gpgstr="gpg --pinentry loopback --passphrase "+gpgpass+" -o "+tmpdecr+" -d "+tmpn
-					# print('gpgstr rsa',gpgstr)
-					ensure_clear_path(tmpdecr)
-					str_rep=subprocess.getoutput(gpgstr)
-					# print('rsa',str_rep)
-					if '@' in str_rep: # found email related to key and decrypted - assumption
-						# read file and return
-						decr_msg_str_tmp=readfile(tmpdecr)
-						print('Decrypted using asymetric key')
-					else:
-						tryaes=True
-						# print('tryaes rsa',str_rep)
-				except:
-					tryaes=True
-					# print('try aes failed 711')
-					# print('except rsa',str_rep)
-			
-			else:
-				tryaes=True
-				
-			if tryaes:
-			
-				# print('try aes')
-				if aes256pp=='':
-					# print('input aes256 password')
-					aes256pp=input_prompt(propmtstr="Enter password (AES256) to decrypt message: ", confirm=False, soft_quite=True)
-			
-				if aes256pp!='':
-					gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+tmpn
-					# print(gpgstr)
-					ensure_clear_path(tmpdecr)
-					str_rep=subprocess.getoutput(gpgstr)
-					# print('aes',str_rep)
-					
-					# if '@' in str_rep:
-					decr_msg_str_tmp=readfile(tmpdecr)
-					print('Decrypted using password')
-						# print('Decrypted using symetric key')
-				else:
-					print("No password provided - quit decryption...")	
-					
-			print('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n')
-				
-		createtmpfile() #overwrite
-		
-	if os.path.exists(tmpdecr):
-		os.remove(tmpdecr)
-	
-	return '' # '\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n'
-	
-	
-	
 	
 
 def decrypt_cred(pp,newest_file):
