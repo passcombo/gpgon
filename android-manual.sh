@@ -8,6 +8,7 @@
 #    - "pkg install python" # [must have] for app to run
 #    - "pkg install pip" # [must have] for app to install additional module
 #    - "pip install psutil" # [must have] for app additional library
+#    - "pip install termcolor" # [must have] NEW LIB for more colors
 
 # [ERRORS?] If psutil python library won't install try this:
 #    - "apt-get update --fix-missing" 
